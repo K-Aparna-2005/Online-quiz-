@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online Quiz System</title>
+  <style>
+    /* General Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: #1e1e2f;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    /* Quiz Container */
+    .quiz-container {
+      width: 450px;
+      background: #2b2b42;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      animation: fadeIn 0.8s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1, h2 {
+      margin-bottom: 10px;
+    }
+
+    p {
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      background: #6c63ff;
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      margin-top: 15px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn:hover {
+      background: #554ee4;
+    }
+
+    /* Screens */
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    /* Quiz Section */
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    #timer {
+      background: #6c63ff;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    /* Answer Buttons */
+    .answer-buttons {
+      list-style: none;
+      margin: 10px 0;
+      padding: 0;
+    }
+
+    .answer-buttons li {
+      background: #383855;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .answer-buttons li:hover {
+      background: #6c63ff;
+    }
+
+    .correct {
+      background: #28a745 !important;
+    }
+
+    .wrong {
+      background: #dc3545 !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 500px) {
+      .quiz-container {
+        width: 90%;
+        padding: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="quiz-container">
+    <!-- Landing Page -->
+    <div id="start-screen" class="screen active">
+      <h1>Online Quiz System</h1>
+      <p>Test your knowledge with fun quizzes!</p>
+      <button id="start-btn" class="btn">Start Quiz</button>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div id="quiz-screen" class="screen">
+      <div class="quiz-header">
+        <h2 id="question-text">Question</h2>
+        <span id="timer">30</span>
+      </div>
+      <ul id="answer-buttons" class="answer-buttons"></ul>
+      <button id="next-btn" class="btn hidden">Next</button>
+    </div>
+
+    <!-- Result Screen -->
+    <div id="result-screen" class="screen">
+      <h2>Quiz Completed 🎉</h2>
+      <p>Your Score: <span id="score"></span></p>
+      <button id="restart-btn" class="btn">Restart</button>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById("start-btn");
+    const nextBtn = document.getElementById("next-btn");
+    const restartBtn = document.getElementById("restart-btn");
+    const startScreen = document.getElementById("start-screen");
+    const quizScreen = document.getElementById("quiz-screen");
+    const resultScreen = document.getElementById("result-screen");
+    const questionText = document.getElementById("question-text");
+    const answerButtons = document.getElementById("answer-buttons");
+    const scoreDisplay = document.getElementById("score");
+    const timerDisplay = document.getElementById("timer");
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let timeLeft = 30;
+    let timer;
+
+    const questions = [
+      {
+        question: "Who is the founder of Microsoft?",
+        answers: [
+          { text: "Bill Gates", correct: true },
+          { text: "Steve Jobs", correct: false },
+          { text: "Elon Musk", correct: false },
+          { text: "Mark Zuckerberg", correct: false },
+        ],
+      },
+      {
+        question: "What does HTML stand for?",
+        answers: [
+          { text: "Hyper Text Markup Language", correct: true },
+          { text: "High Transfer Machine Language", correct: false },
+          { text: "Hyper Transfer Multi Language", correct: false },
+          { text: "Home Tool Markup Language", correct: false },
+        ],
+      },
+      {
+        question: "Which one is a JavaScript framework?",
+        answers: [
+          { text: "React.js", correct: true },
+          { text: "Laravel", correct: false },
+          { text: "Django", correct: false },
+          { text: "Flask", correct: false },
+        ],
+      },
+    ];
+
+    startBtn.addEventListener("click", startQuiz);
+    nextBtn.addEventListener("click", () => {
+      currentQuestionIndex++;
+      if (currentQuestionIndex < questions.length) {
+        setNextQuestion();
+      } else {
+        showResult();
+      }
+    });
+    restartBtn.addEventListener("click", restartQuiz);
+
+    function startQuiz() {
+      startScreen.classList.remove("active");
+      quizScreen.classList.add("active");
+      currentQuestionIndex = 0;
+      score = 0;
+      setNextQuestion();
+    }
+
+    function setNextQuestion() {
+      resetState();
+      showQuestion(questions[currentQuestionIndex]);
+      startTimer();
+    }
+
+    function showQuestion(question) {
+      questionText.textContent = question.question;
+      question.answers.forEach((answer) => {
+        const button = document.createElement("li");
+        button.textContent = answer.text;
+        button.addEventListener("click", () => selectAnswer(button, answer.correct));
+        answerButtons.appendChild(button);
+      });
+    }
+
+    function resetState() {
+      nextBtn.classList.add("hidden");
+      answerButtons.innerHTML = "";
+      clearInterval(timer);
+      timeLeft = 30;
+      timerDisplay.textContent = timeLeft;
+    }
+
+    function selectAnswer(button, correct) {
+      if (correct) {
+        button.classList.add("correct");
+        score++;
+      } else {
+        button.classList.add("wrong");
+      }
+
+      Array.from(answerButtons.children).forEach((btn) => {
+        btn.style.pointerEvents = "none";
+      });
+
+      nextBtn.classList.remove("hidden");
+    }
+
+    function startTimer() {
+      clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          nextBtn.click();
+        }
+      }, 1000);
+    }
+
+    function restartQuiz() {
+      resultScreen.classList.remove("active");
+      startScreen.classList.add("active");
+    }
+
+    function showResult() {
+      quizScreen.classList.remove("active");
+      resultScreen.classList.add("active");
+      scoreDisplay.textContent = `${score} / ${questions.length}`;
+    }
+  </script>
+</body>
+</html>
